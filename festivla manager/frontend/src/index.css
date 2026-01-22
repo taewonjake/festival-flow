@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 모바일 뷰 기본 스타일 */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  background-color: #f8fafc; /* slate-50 */
+}
+
+/* 학생 페이지는 모바일 최적화 (max-width 제한) */
+body:not(.admin-page) #root {
+  max-width: 430px;
+  margin: 0 auto;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+}
+
+/* 관리자 페이지는 전체 너비 사용 */
+body.admin-page #root {
+  max-width: 100%;
+  margin: 0;
+  box-shadow: none;
+}
+
+/* 스크롤바 스타일링 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9; /* slate-100 */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* slate-300 */
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #f43f5e; /* rose-500 */
+}
+
+/* QR 코드 네온 효과 (Glow) */
+@keyframes qr-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(244, 63, 94, 0.4),
+                0 0 40px rgba(244, 63, 94, 0.3),
+                0 0 60px rgba(236, 72, 153, 0.2),
+                0 0 80px rgba(219, 39, 119, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(244, 63, 94, 0.6),
+                0 0 60px rgba(244, 63, 94, 0.5),
+                0 0 90px rgba(236, 72, 153, 0.4),
+                0 0 120px rgba(219, 39, 119, 0.3);
+  }
+}
+
+.qr-glow {
+  animation: qr-glow 2s ease-in-out infinite;
+}
+
+/* 채팅 말풍선 꼬리 */
+.chat-bubble-tail-right::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: -8px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid rgb(244, 63, 94); /* rose-500 */
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+}
+
+.chat-bubble-tail-left::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: -8px;
+  width: 0;
+  height: 0;
+  border-right: 8px solid white;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+}
+
+/* QR 스캔 라인 애니메이션 */
+@keyframes scan-line {
+  0% {
+    top: 0;
+  }
+  100% {
+    top: 100%;
+  }
+}
+
+.animate-scan-line {
+  animation: scan-line 2s linear infinite;
+}
