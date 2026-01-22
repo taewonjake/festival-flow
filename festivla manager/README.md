@@ -95,5 +95,46 @@ festival-flow/
 └── docker-compose.yml        # 컨테이너 오케스트레이션
 ```
 
+## 6. System Flowchart
+
+```mermaid
+graph TD
+    %% 사용자(학생) 흐름
+    subgraph Student[🙋‍♀️ Student App]
+        S_Start(접속 및 로그인) --> S_Main{대기 등록 여부}
+        S_Main -- 미등록 --> S_Form[웨이팅 등록]
+        S_Form --> S_Wait[대기 현황판\n(실시간 순서 확인)]
+        S_Main -- 등록됨 --> S_Wait
+        
+        S_Wait -- 순서 임박 --> S_Alert[입장 알림 수신]
+        S_Alert --> S_QR[QR Ticket 발급\n(30초마다 갱신)]
+        S_QR --> S_Scan(QR 스캔 대기)
+        
+        S_Wait -- 문제 발생 --> S_Chat[1:1 채팅 문의]
+    end
+
+    %% 관리자 흐름
+    subgraph Admin[🕵️‍♂️ Admin Dashboard]
+        A_Login(관리자 로그인) --> A_Dash[통합 대시보드]
+        
+        A_Dash --> A_Queue[실시간 대기열 관리]
+        A_Queue --> A_Call[손님 호출]
+        
+        A_Dash --> A_QR[QR 스캐너]
+        A_QR -- 카메라 스캔 --> A_Verify{QR 유효성 검증\n(TOTP)}
+        
+        A_Verify -- 유효함 --> A_Table[테이블 배정]
+        A_Verify -- 유효하지 않음 --> A_Error[경고 메시지]
+        
+        A_Table --> A_Status[테이블 현황 업데이트]
+    end
+
+    %% 시스템 상호작용
+    S_Form -- API: 대기 요청 --> A_Queue
+    A_Call -- WebSocket: 호출 알림 --> S_Alert
+    S_Scan -.-> A_QR
+    S_Chat <--> A_Dash
+```
+
 ---
 > 🚀 설치 및 실행 방법은 [INSTALL.md](./INSTALL.md) 파일을 참고해주세요.
