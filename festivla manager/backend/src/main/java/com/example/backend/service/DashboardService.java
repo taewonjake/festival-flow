@@ -1,8 +1,10 @@
 package com.example.backend.service;
 
+import com.example.backend.domain.entity.Event;
 import com.example.backend.domain.enums.TableStatus;
 import com.example.backend.domain.enums.WaitingStatus;
 import com.example.backend.dto.response.DashboardStatsResponse;
+import com.example.backend.repository.EventRepository;
 import com.example.backend.repository.TableRepository;
 import com.example.backend.repository.WaitingRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,27 +22,21 @@ public class DashboardService {
 
     private final WaitingRepository waitingRepository;
     private final TableRepository tableRepository;
+    private final EventRepository eventRepository;
 
-    /**
-     * 대시보드 통계 조회
-     */
     public DashboardStatsResponse getDashboardStats() {
-        // 총 대기 팀 수
-        Long totalWaiting = waitingRepository.countByStatus(WaitingStatus.WAITING);
+        Long eventId = getDefaultEvent().getId();
+        Long totalWaiting = waitingRepository.countByEventIdAndStatus(eventId, WaitingStatus.WAITING);
+        Long tablesInUse = tableRepository.countByEventIdAndStatus(eventId, TableStatus.OCCUPIED);
+        Long totalTables = tableRepository.countByEventId(eventId);
+        Long calledUsers = waitingRepository.countByEventIdAndStatus(eventId, WaitingStatus.CALLED);
 
-        // 사용 중인 테이블 수
-        Long tablesInUse = tableRepository.countByStatus(TableStatus.OCCUPIED);
-
-        // 전체 테이블 수
-        Long totalTables = tableRepository.count();
-
-        // 호출 중인 인원 수
-        Long calledUsers = waitingRepository.countByStatus(WaitingStatus.CALLED);
-
-        // 오늘 입장 완료 수
         LocalDateTime startOfDay = LocalDateTime.of(LocalDate.now(), LocalTime.MIN);
-        Long completedToday = waitingRepository.countByStatusAndCreatedAtAfter(
-                WaitingStatus.ARRIVED, startOfDay);
+        Long completedToday = waitingRepository.countByEventIdAndStatusAndCreatedAtAfter(
+                eventId,
+                WaitingStatus.ARRIVED,
+                startOfDay
+        );
 
         return DashboardStatsResponse.builder()
                 .totalWaiting(totalWaiting)
@@ -49,5 +45,10 @@ public class DashboardService {
                 .calledUsers(calledUsers)
                 .completedToday(completedToday)
                 .build();
+    }
+
+    private Event getDefaultEvent() {
+        return eventRepository.findFirstByOrderByIdAsc()
+                .orElseThrow(() -> new IllegalStateException("기본 이벤트가 존재하지 않습니다."));
     }
 }

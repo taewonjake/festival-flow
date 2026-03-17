@@ -21,8 +21,8 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "chat_rooms", indexes = {
-    @Index(name = "idx_user_id", columnList = "user_id"),
-    @Index(name = "idx_status", columnList = "status")
+    @Index(name = "idx_chat_rooms_event_user", columnList = "event_id,user_id"),
+    @Index(name = "idx_chat_rooms_event_status", columnList = "event_id,status")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -31,6 +31,10 @@ public class ChatRoom extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "event_id", nullable = false)
+    private Event event;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -44,13 +48,13 @@ public class ChatRoom extends BaseTimeEntity {
     private String lastMessage;
 
     @Builder
-    public ChatRoom(User user, ChatRoomStatus status, String lastMessage) {
+    public ChatRoom(Event event, User user, ChatRoomStatus status, String lastMessage) {
+        this.event = event;
         this.user = user;
         this.status = status;
         this.lastMessage = lastMessage;
     }
 
-    // 상태 변경 메서드
     public void updateStatus(ChatRoomStatus status) {
         this.status = status;
     }

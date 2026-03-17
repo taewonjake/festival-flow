@@ -11,13 +11,16 @@ import java.util.List;
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 
-    // 채팅방의 메시지 목록 조회 (최신순)
-    List<ChatMessage> findByChatRoomIdOrderByCreatedAtAsc(Long chatRoomId);
+    List<ChatMessage> findByEventIdAndChatRoomIdOrderByCreatedAtAsc(Long eventId, Long chatRoomId);
 
-    // 읽지 않은 메시지 수 조회
-    @Query("SELECT COUNT(m) FROM ChatMessage m WHERE m.chatRoom.id = :chatRoomId AND m.isRead = false")
-    Long countUnreadMessages(@Param("chatRoomId") Long chatRoomId);
+    @Query("""
+            SELECT COUNT(m)
+            FROM ChatMessage m
+            WHERE m.event.id = :eventId
+              AND m.chatRoom.id = :chatRoomId
+              AND m.isRead = false
+            """)
+    Long countUnreadMessages(@Param("eventId") Long eventId, @Param("chatRoomId") Long chatRoomId);
 
-    // 채팅방의 읽지 않은 메시지 목록 조회
-    List<ChatMessage> findByChatRoomIdAndIsReadFalse(Long chatRoomId);
+    List<ChatMessage> findByEventIdAndChatRoomIdAndIsReadFalse(Long eventId, Long chatRoomId);
 }

@@ -63,7 +63,7 @@ public class QrCodeService {
      * @param qrData 스캔된 QR 코드 데이터 (형식: waitingId:totpCode)
      * @return 검증 성공 시 Waiting 엔티티, 실패 시 null
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public Waiting verifyQrCode(String qrData) {
         try {
             String[] parts = qrData.split(":");
@@ -101,7 +101,9 @@ public class QrCodeService {
                 return null;
             }
 
-            return waiting;
+            // QR 스캔 완료 시 즉시 입장 완료 처리
+            waiting.arrive();
+            return waitingRepository.save(waiting);
         } catch (Exception e) {
             log.error("QR 코드 검증 중 오류 발생", e);
             return null;

@@ -12,17 +12,27 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@jakarta.persistence.Table(name = "tables", indexes = {
-    @Index(name = "idx_table_number", columnList = "table_number", unique = true),
-    @Index(name = "idx_status", columnList = "status")
-})
+@jakarta.persistence.Table(
+        name = "tables",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_tables_event_table_number",
+                        columnNames = {"event_id", "table_number"}
+                )
+        },
+        indexes = {
+                @Index(name = "idx_tables_event_status", columnList = "event_id,status")
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Table extends BaseTimeEntity {
@@ -31,7 +41,11 @@ public class Table extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "table_number", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "event_id", nullable = false)
+    private Event event;
+
+    @Column(name = "table_number", nullable = false)
     private Integer tableNumber;
 
     @Column(name = "capacity", nullable = false)
@@ -46,14 +60,14 @@ public class Table extends BaseTimeEntity {
     private Waiting currentWaiting;
 
     @Builder
-    public Table(Integer tableNumber, Integer capacity, TableStatus status, Waiting currentWaiting) {
+    public Table(Event event, Integer tableNumber, Integer capacity, TableStatus status, Waiting currentWaiting) {
+        this.event = event;
         this.tableNumber = tableNumber;
         this.capacity = capacity;
         this.status = status;
         this.currentWaiting = currentWaiting;
     }
 
-    // 상태 변경 메서드
     public void updateStatus(TableStatus status) {
         this.status = status;
     }
@@ -66,6 +80,10 @@ public class Table extends BaseTimeEntity {
     public void clearWaiting() {
         this.currentWaiting = null;
         this.status = TableStatus.EMPTY;
+    }
+
+    public void releaseWaiting() {
+        this.currentWaiting = null;
     }
 
     public void startCleaning() {

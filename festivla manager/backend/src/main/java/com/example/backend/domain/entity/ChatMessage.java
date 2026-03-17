@@ -22,8 +22,8 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "chat_messages", indexes = {
-    @Index(name = "idx_chat_room_id", columnList = "chat_room_id"),
-    @Index(name = "idx_is_read", columnList = "is_read")
+    @Index(name = "idx_chat_messages_event_room", columnList = "event_id,chat_room_id"),
+    @Index(name = "idx_chat_messages_is_read", columnList = "is_read")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -32,6 +32,10 @@ public class ChatMessage extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "event_id", nullable = false)
+    private Event event;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "chat_room_id", nullable = false)
@@ -52,7 +56,15 @@ public class ChatMessage extends BaseTimeEntity {
     private MessageType type;
 
     @Builder
-    public ChatMessage(ChatRoom chatRoom, SenderRole senderRole, String message, Boolean isRead, MessageType type) {
+    public ChatMessage(
+            Event event,
+            ChatRoom chatRoom,
+            SenderRole senderRole,
+            String message,
+            Boolean isRead,
+            MessageType type
+    ) {
+        this.event = event;
         this.chatRoom = chatRoom;
         this.senderRole = senderRole;
         this.message = message;
@@ -60,7 +72,6 @@ public class ChatMessage extends BaseTimeEntity {
         this.type = type;
     }
 
-    // 읽음 처리 메서드
     public void markAsRead() {
         this.isRead = true;
     }

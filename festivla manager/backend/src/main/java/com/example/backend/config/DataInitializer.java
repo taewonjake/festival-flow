@@ -1,11 +1,10 @@
 package com.example.backend.config;
 
-import com.example.backend.domain.entity.Table;
+import com.example.backend.domain.entity.Event;
 import com.example.backend.domain.entity.User;
-import com.example.backend.domain.enums.TableStatus;
 import com.example.backend.domain.enums.UserRole;
 import com.example.backend.domain.enums.UserStatus;
-import com.example.backend.repository.TableRepository;
+import com.example.backend.repository.EventRepository;
 import com.example.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,32 +12,45 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+
 @Slf4j
 @Component
-@Order(1) // TableInitializer보다 먼저 실행
+@Order(1)
 @RequiredArgsConstructor
 public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
-    private final TableRepository tableRepository;
+    private final EventRepository eventRepository;
 
     @Override
     public void run(String... args) {
+        initDefaultEvent();
         initAdminUser();
-        // 테이블은 TableInitializer에서 처리하므로 여기서는 제외
     }
 
-    /**
-     * 관리자 계정 초기화
-     */
-    private void initAdminUser() {
-        // 관리자 계정이 이미 있으면 건너뛰기
-        if (userRepository.findByKakaoId("admin").isPresent()) {
-            log.info("관리자 계정이 이미 존재합니다.");
+    private void initDefaultEvent() {
+        if (eventRepository.findFirstByOrderByIdAsc().isPresent()) {
             return;
         }
 
-        log.info("관리자 계정 생성 시작...");
+        LocalDate today = LocalDate.now();
+        Event event = Event.builder()
+                .name("Festival Flow Default Event")
+                .startDate(today)
+                .endDate(today.plusDays(30))
+                .status("ACTIVE")
+                .build();
+
+        eventRepository.save(event);
+        log.info("Default event created.");
+    }
+
+    private void initAdminUser() {
+        if (userRepository.findByKakaoId("admin").isPresent()) {
+            log.info("Admin account already exists.");
+            return;
+        }
 
         User admin = User.builder()
                 .kakaoId("admin")
@@ -50,6 +62,6 @@ public class DataInitializer implements CommandLineRunner {
                 .build();
 
         userRepository.save(admin);
-        log.info("관리자 계정 생성 완료: 아이디=admin, 비밀번호=1234 (테스트용)");
+        log.info("Admin account created.");
     }
 }

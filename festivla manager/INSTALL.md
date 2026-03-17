@@ -1,62 +1,94 @@
-# 🚀 설치 및 실행 가이드 (Installation & Run)
+# 설치 및 실행 가이드
 
-이 프로젝트는 Backend(Spring Boot)와 Frontend(React)로 구성되어 있습니다.
+이 프로젝트는 다음 구성으로 동작합니다.
+- 백엔드: Spring Boot
+- 프론트엔드: React (Vite)
+- 인프라: Docker 기반 MySQL, Redis
 
-## 사전 요구 사항 (Prerequisites)
+현재 백엔드는 H2 메모리 DB가 아니라 MySQL + Flyway 마이그레이션 기준으로 실행됩니다.
 
-*   **Java JDK 17** 이상
-*   **Node.js 18** 이상 (LTS 권장)
-*   **Docker** (선택 사항 - Redis/DB 실행용)
+## 1. 사전 준비
 
-## 1. Backend 실행 (Spring Boot)
+- Java 17 이상
+- Node.js 18 이상 (LTS 권장)
+- Docker / Docker Compose
 
-데이터베이스 및 서버 환경을 설정하고 실행합니다.
+## 2. 인프라 실행 (MySQL, Redis)
+
+프로젝트 루트(`docker-compose.yml`이 있는 위치)에서 실행:
 
 ```bash
-# 1. backend 디렉토리로 이동
+docker-compose up -d
+```
+
+컨테이너 상태 확인:
+
+```bash
+docker ps
+```
+
+정상 기동 기대 컨테이너:
+- `festival_flow_mysql` (`3307 -> 3306`)
+- `festival_flow_redis` (`6379 -> 6379`)
+
+## 3. 백엔드 실행
+
+```bash
 cd backend
-
-# 2. 의존성 설치 및 빌드 (Windows)
-./gradlew build
-
-# 3. 서버 실행
 ./gradlew bootRun
 ```
 
-*   서버는 기본적으로 `http://localhost:8080`에서 실행됩니다.
-*   API 문서는 `http://localhost:8080/swagger-ui/index.html`에서 확인할 수 있습니다.
+Windows PowerShell:
 
-## 2. Frontend 실행 (React)
+```powershell
+cd backend
+.\gradlew.bat bootRun
+```
 
-사용자 및 관리자 인터페이스를 실행합니다.
+### 백엔드 실행 설정
+
+- DB URL: `jdbc:mysql://localhost:3307/festival_flow`
+- JPA 모드: `spring.jpa.hibernate.ddl-auto=validate`
+- Flyway: `spring.flyway.enabled=true`
+
+애플리케이션 시작 시 Flyway 마이그레이션이 자동 적용됩니다.
+
+### 백엔드 접속 주소
+
+- API: `http://localhost:8080`
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+
+## 4. 프론트엔드 실행
+
+새 터미널에서 실행:
 
 ```bash
-# 1. frontend 디렉토리로 이동
 cd frontend
-
-# 2. 패키지 설치 (의존성 충돌 방지를 위해 legacy-peer-deps 권장)
 npm install --legacy-peer-deps
-
-# 3. 개발 서버 실행
 npm run dev
 ```
 
-*   프론트엔드는 기본적으로 `http://localhost:5173` (Vite 기본 포트)에서 실행됩니다.
+프론트엔드 주소:
+- `http://localhost:5173`
 
-## 3. 환경 변수 설정 (Environment Variables)
+## 5. 빠른 점검
 
-### Backend (`backend/src/main/resources/application.properties`)
-DB 설정 및 포트 설정을 변경하려면 이 파일을 수정하세요.
+1. Docker 컨테이너가 실행 중인지 확인 (`docker ps`)
+2. 백엔드 로그에서 Flyway 성공 로그 확인
+3. Swagger UI 접속 확인
+4. 프론트 페이지 접속 후 API 호출 정상 동작 확인
 
-```properties
-server.port=8080
-spring.datasource.url=jdbc:h2:mem:testdb  # 개발용 H2 DB
-spring.jpa.hibernate.ddl-auto=update
-```
+## 6. 문제 해결
 
-### Frontend (`frontend/.env`)
-API 서버 주소가 변경된 경우 루트에 `.env` 파일을 생성하여 설정합니다.
+- MySQL 연결 실패 (`Connection refused`):
+  - `docker-compose up -d` 재실행
+  - `festival_flow_mysql` 컨테이너 상태 확인
+  - 로컬 `3307` 포트 사용 여부 확인
 
-```env
-VITE_API_URL=http://localhost:8080/api
-```
+- Flyway 마이그레이션 실패:
+  - 백엔드 로그에서 실패한 migration 버전 확인
+  - `backend/src/main/resources/db/migration` 스크립트 점검
+
+- Redis 연결 오류:
+  - `festival_flow_redis` 컨테이너 상태 확인
+  - 로컬 `6379` 포트 충돌 여부 확인

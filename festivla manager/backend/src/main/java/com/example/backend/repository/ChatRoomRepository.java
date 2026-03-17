@@ -11,12 +11,11 @@ import java.util.Optional;
 @Repository
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
 
-    // 사용자의 채팅방 목록 조회
-    List<ChatRoom> findByUserIdOrderByUpdatedAtDesc(Long userId);
+    List<ChatRoom> findByEventIdAndUserIdOrderByUpdatedAtDesc(Long eventId, Long userId);
 
-    // 사용자의 열린 채팅방 조회
-    Optional<ChatRoom> findByUserIdAndStatus(Long userId, ChatRoomStatus status);
+    Optional<ChatRoom> findByEventIdAndUserIdAndStatus(Long eventId, Long userId, ChatRoomStatus status);
 
-    // 상태별 채팅방 목록 조회 (관리자용)
-    List<ChatRoom> findByStatusOrderByUpdatedAtDesc(ChatRoomStatus status);
+    List<ChatRoom> findByEventIdAndStatusOrderByUpdatedAtDesc(Long eventId, ChatRoomStatus status);
+
+    List<ChatRoom> findByEventIdOrderByUpdatedAtDesc(Long eventId);
 }

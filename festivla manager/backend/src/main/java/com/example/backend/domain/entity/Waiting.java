@@ -14,19 +14,30 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "waitings", indexes = {
-    @Index(name = "idx_user_id", columnList = "user_id"),
-    @Index(name = "idx_status", columnList = "status"),
-    @Index(name = "idx_waiting_number", columnList = "waiting_number")
-})
+@Table(
+        name = "waitings",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_waitings_event_date_number",
+                        columnNames = {"event_id", "business_date", "waiting_number"}
+                )
+        },
+        indexes = {
+                @Index(name = "idx_waitings_user_id", columnList = "user_id"),
+                @Index(name = "idx_waitings_event_date_status", columnList = "event_id,business_date,status"),
+                @Index(name = "idx_waitings_event_date_number", columnList = "event_id,business_date,waiting_number")
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Waiting extends BaseTimeEntity {
@@ -36,8 +47,15 @@ public class Waiting extends BaseTimeEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "event_id", nullable = false)
+    private Event event;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @Column(name = "business_date", nullable = false)
+    private LocalDate businessDate;
 
     @Column(name = "head_count", nullable = false)
     private Integer headCount;
@@ -46,7 +64,7 @@ public class Waiting extends BaseTimeEntity {
     @Column(name = "status", nullable = false)
     private WaitingStatus status;
 
-    @Column(name = "waiting_number", nullable = false, unique = true)
+    @Column(name = "waiting_number", nullable = false)
     private Long waitingNumber;
 
     @Column(name = "call_time")
@@ -56,8 +74,19 @@ public class Waiting extends BaseTimeEntity {
     private String totpSecret;
 
     @Builder
-    public Waiting(User user, Integer headCount, WaitingStatus status, Long waitingNumber, LocalDateTime callTime, String totpSecret) {
+    public Waiting(
+            Event event,
+            User user,
+            LocalDate businessDate,
+            Integer headCount,
+            WaitingStatus status,
+            Long waitingNumber,
+            LocalDateTime callTime,
+            String totpSecret
+    ) {
+        this.event = event;
         this.user = user;
+        this.businessDate = businessDate;
         this.headCount = headCount;
         this.status = status;
         this.waitingNumber = waitingNumber;
@@ -65,7 +94,6 @@ public class Waiting extends BaseTimeEntity {
         this.totpSecret = totpSecret;
     }
 
-    // 상태 변경 메서드
     public void updateStatus(WaitingStatus status) {
         this.status = status;
     }
