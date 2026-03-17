@@ -53,6 +53,7 @@ jobs:
         with:
           context: "./festivla manager/backend"
           file: "./festivla manager/backend/Dockerfile"
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ secrets.DOCKER_REPO }}:latest
