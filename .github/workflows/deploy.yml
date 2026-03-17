@@ -76,4 +76,4 @@ jobs:
             sudo docker pull ${{ secrets.DOCKER_REPO }}:latest
             sudo docker stop festival-backend || true
             sudo docker rm festival-backend || true
-            sudo docker run -d --name festival-backend --restart unless-stopped -p 8080:8080 ${{ secrets.DOCKER_REPO }}:latest
+            sudo docker run -d --name festival-backend --restart unless-stopped --network host ${{ secrets.DOCKER_REPO }}:latest
