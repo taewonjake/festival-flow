@@ -1,0 +1,72 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: ["master", "main", "deploy"]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+
+      - name: Restore application-prod.yml from secret
+        run: |
+          mkdir -p "festivla manager/backend/src/main/resources"
+          cat > "festivla manager/backend/src/main/resources/application-prod.yml" << 'EOF'
+          ${{ secrets.APPLICATION }}
+          EOF
+
+      - name: Setup Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('festivla manager/backend/**/*.gradle*', 'festivla manager/backend/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Build JAR
+        working-directory: "festivla manager/backend"
+        run: |
+          chmod +x ./gradlew
+          ./gradlew clean bootJar -x test
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: "./festivla manager/backend"
+          file: "./festivla manager/backend/Dockerfile"
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_REPO }}:latest
+            ${{ secrets.DOCKER_REPO }}:${{ github.sha }}
+
+      - name: Deploy on EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          script_stop: true
+          script: |
+            sudo docker pull ${{ secrets.DOCKER_REPO }}:latest
+            sudo docker stop festival-backend || true
+            sudo docker rm festival-backend || true
+            sudo docker run -d --name festival-backend --restart unless-stopped -p 8080:8080 ${{ secrets.DOCKER_REPO }}:latest
