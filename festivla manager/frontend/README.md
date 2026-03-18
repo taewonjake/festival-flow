@@ -49,8 +49,12 @@ npm run build
 
 ## 주요 설정
 
+### 환경변수
+- `VITE_API_BASE_URL` (예: `https://api.feval.p-e.kr/api`)
+- `VITE_WS_BASE_URL` (예: `wss://api.feval.p-e.kr/ws`)
+
 ### Axios 설정
-- Base URL: `http://localhost:8080/api`
+- Base URL: `VITE_API_BASE_URL` (미설정 시 `http://localhost:8080/api`)
 - 요청/응답 인터셉터 설정 완료
 - 토큰 자동 주입 및 401 에러 처리
 

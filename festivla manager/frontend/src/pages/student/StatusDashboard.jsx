@@ -7,6 +7,10 @@ import Button from '../../components/common/Button';
 import useUserStore from '../../store/userStore';
 import { useSocket } from '../../hooks/useSocket';
 
+const WS_BASE_URL = (
+  import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8080/ws'
+).replace(/\/+$/, '');
+
 const StatusDashboard = () => {
   const navigate = useNavigate();
   const { user } = useUserStore();
@@ -28,7 +32,7 @@ const StatusDashboard = () => {
     },
   });
 
-  const { isConnected } = useSocket('ws://localhost:8080/ws/waiting', {
+  const { isConnected } = useSocket(`${WS_BASE_URL}/waiting`, {
     userId: user?.id,
     onMessage: (message) => {
       if (message.type === 'CALLED') {
