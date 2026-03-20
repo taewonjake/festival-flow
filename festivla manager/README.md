@@ -144,5 +144,6 @@ flowchart LR
   C --> D[Build & Push Docker Image]
   D --> E[Docker Hub]
   E --> F[EC2 Deploy via SSH]
+```
 ---
 > 🚀 설치 및 실행 방법은 [INSTALL.md](./INSTALL.md) 파일을 참고해주세요.
