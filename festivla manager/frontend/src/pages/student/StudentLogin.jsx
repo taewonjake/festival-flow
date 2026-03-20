@@ -135,6 +135,16 @@ const StudentLogin = () => {
             </Button>
           </div>
         </form>
+
+        <div className="pt-6 text-center">
+          <button
+            type="button"
+            onClick={() => navigate('/admin/login')}
+            className="text-xs font-medium text-slate-400 hover:text-slate-600 underline underline-offset-2 transition-colors"
+          >
+            관리자 로그인
+          </button>
+        </div>
       </div>
     </div>
   );
