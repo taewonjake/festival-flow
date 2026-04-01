@@ -10,6 +10,9 @@ import com.example.backend.repository.EventRepository;
 import com.example.backend.repository.TableAssignmentHistoryRepository;
 import com.example.backend.repository.TableRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +29,7 @@ public class TableService {
     private final EventRepository eventRepository;
     private final TableAssignmentHistoryRepository tableAssignmentHistoryRepository;
 
+    @Cacheable(value = "tableList", key = "@cacheKey.tables()")
     public List<TableResponse> getAllTables() {
         Long eventId = getDefaultEvent().getId();
         List<Table> tables = tableRepository.findByEventIdOrderByTableNumberAsc(eventId);
@@ -35,6 +39,11 @@ public class TableService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "dashboardStats", allEntries = true),
+            @CacheEvict(value = "tableList", allEntries = true),
+            @CacheEvict(value = "waitingList", allEntries = true)
+    })
     public TableResponse updateStatus(Long tableId, TableStatusUpdateRequest request) {
         Long eventId = getDefaultEvent().getId();
         Table table = tableRepository.findById(tableId)

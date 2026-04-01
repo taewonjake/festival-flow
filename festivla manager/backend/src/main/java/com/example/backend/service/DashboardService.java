@@ -8,6 +8,7 @@ import com.example.backend.repository.EventRepository;
 import com.example.backend.repository.TableRepository;
 import com.example.backend.repository.WaitingRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@ public class DashboardService {
     private final TableRepository tableRepository;
     private final EventRepository eventRepository;
 
+    @Cacheable(value = "dashboardStats", key = "@cacheKey.dashboard()")
     public DashboardStatsResponse getDashboardStats() {
         Long eventId = getDefaultEvent().getId();
         Long totalWaiting = waitingRepository.countByEventIdAndStatus(eventId, WaitingStatus.WAITING);

@@ -14,6 +14,9 @@ import com.example.backend.repository.TableAssignmentHistoryRepository;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.repository.WaitingRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +52,11 @@ public class WaitingService {
     private final ChatService chatService;
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "dashboardStats", allEntries = true),
+            @CacheEvict(value = "tableList", allEntries = true),
+            @CacheEvict(value = "waitingList", allEntries = true)
+    })
     public WaitingResponse joinWaiting(Long userId, WaitingRequest request) {
         Event event = getDefaultEvent();
         LocalDate businessDate = LocalDate.now();
@@ -97,6 +105,7 @@ public class WaitingService {
         return response;
     }
 
+    @Cacheable(value = "waitingList", key = "@cacheKey.waitings(#status)")
     public List<WaitingResponse> getWaitingList(WaitingStatus status) {
         Long eventId = getDefaultEvent().getId();
         List<Waiting> waitings = (status == null)
@@ -109,6 +118,11 @@ public class WaitingService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "dashboardStats", allEntries = true),
+            @CacheEvict(value = "tableList", allEntries = true),
+            @CacheEvict(value = "waitingList", allEntries = true)
+    })
     public WaitingResponse callUser(Long waitingId) {
         Waiting waiting = waitingRepository.findById(waitingId)
                 .orElseThrow(() -> new IllegalArgumentException("Waiting not found."));
@@ -133,6 +147,11 @@ public class WaitingService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "dashboardStats", allEntries = true),
+            @CacheEvict(value = "tableList", allEntries = true),
+            @CacheEvict(value = "waitingList", allEntries = true)
+    })
     public WaitingResponse confirmEntry(Long waitingId) {
         Waiting waiting = waitingRepository.findById(waitingId)
                 .orElseThrow(() -> new IllegalArgumentException("Waiting not found."));
@@ -147,6 +166,11 @@ public class WaitingService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "dashboardStats", allEntries = true),
+            @CacheEvict(value = "tableList", allEntries = true),
+            @CacheEvict(value = "waitingList", allEntries = true)
+    })
     public void cancelWaiting(Long waitingId, Long userId) {
         Waiting waiting = waitingRepository.findById(waitingId)
                 .orElseThrow(() -> new IllegalArgumentException("Waiting not found."));
@@ -171,6 +195,11 @@ public class WaitingService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "dashboardStats", allEntries = true),
+            @CacheEvict(value = "tableList", allEntries = true),
+            @CacheEvict(value = "waitingList", allEntries = true)
+    })
     public WaitingResponse cancelWaitingByAdmin(Long waitingId) {
         Waiting waiting = waitingRepository.findById(waitingId)
                 .orElseThrow(() -> new IllegalArgumentException("Waiting not found."));
@@ -194,6 +223,11 @@ public class WaitingService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "dashboardStats", allEntries = true),
+            @CacheEvict(value = "tableList", allEntries = true),
+            @CacheEvict(value = "waitingList", allEntries = true)
+    })
     public WaitingResponse assignTable(Long waitingId, Long tableId) {
         Waiting waiting = waitingRepository.findById(waitingId)
                 .orElseThrow(() -> new IllegalArgumentException("Waiting not found."));
