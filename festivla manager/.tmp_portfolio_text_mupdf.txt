@@ -1,0 +1,219 @@
+포폴 정리
+1. 프로젝트 개요
+프로젝트명
+Festival Flow (축제 웨이팅·테이블 운영 지원 서비스)
+문제 정의 및 목표
+축제 기간 주점/부스 운영에서는 대기 등록, 호출, 입장 확인, 테이블 배정을 짧은 시간 안에 처리
+해야 하고, 현장 혼잡으로 인해 운영자와 이용자 모두 실시간 정보 확인이 어렵습니다.
+또한 대기 현황과 호출 상태를 수기로 관리하면 누락/지연이 발생하기 쉬워 운영 효율이 떨어집니
+다.
+따라서 학생용 모바일 화면과 관리자 대시보드를 통합해, 웨이팅 등록부터 호출·입장·테이블 관리
+까지 한 흐름으로 처리하고, QR/TOTP 기반 검증과 실시간 알림을 통해 현장 운영 정확도와 처리
+속도를 높이는 것을 목표로 했습니다.
+핵심 범위 (아키텍처/구현)
+서비스: 학생/관리자 웹, 웨이팅 API, 테이블 API, 채팅 API, QR 검증 API, WebSocket 알림
+인프라: EC2(Spring Boot), S3 + CloudFront(프론트), RDS(MySQL), Redis,
+Lambda(EventBridge 주기 집계)
+운영: 환경변수 기반 설정 외부화(12-factor), CloudFront SPA 라우팅, CORS 정책 관리,
+SG-to-SG 보안 적용
+요구사항 요약
+기능 요구사항
+학생: 이름/전화번호 기반 로그인 후 웨이팅 신청·조회·취소
+관리자: 대기열 조회, 호출/입장 확인, 테이블 상태 변경 및 배정
+QR 입장권: 호출 상태에서만 유효한 QR(TOTP) 생성/검증
+실시간성: WebSocket + Polling 혼합으로 순번/호출 상태 반영
+관리자 대시보드: 총 대기, 사용 중 테이블, 호출 인원, 당일 처리량 제공
+비기능 요구사항
+포폴 정리
+1
+
+
+가용성: 실시간 API/WebSocket은 EC2 유지, 집계성 워크로드는 Lambda 분리
+성능: CloudFront 정적 캐시 + Redis 캐시(TTL/Evict)로 응답속도 및 DB 부하 개선
+보안: RDS 인바운드 3306을 EC2/Lambda SG 소스로만 허용, CORS origin 명시 관리
+운영성: DB/Redis/CORS 설정 환경변수화, snapshot + fallback 구조로 기능 연속성 확보
+2. 아키텍쳐 설계
+아래는 동일 구성을 텍스트로 확인할 수 있는  mermaid  버전입니다.
+flowchart LR
+  U[User Browser]
+  GH[GitHub]
+  subgraph AWS
+    CF[CloudFront]
+    S3[S3 Frontend Static dist]
+    EC2[EC2 Spring Boot API and WebSocket]
+    RDS[(AWS RDS MySQL)]
+    SQS[(AWS SQS Queue)]
+    EB[EventBridge Schedule]
+    L[Lambda Aggregator Worker]
+    IAM[(AWS IAM Role Policy)]
+    U --> CF
+    CF -->|static files| S3
+포폴 정리
+2
+
+
+    U -->|/api, /ws| EC2
+    EC2 -->|read write| RDS
+    EC2 -->|enqueue| SQS
+    EB -->|rate 1m| L
+    SQS -->|trigger consume| L
+    L -->|upsert snapshot| RDS
+    IAM -.access control.- EC2
+    IAM -.access control.- L
+  end
+  GHA[GitHub Actions]
+  GH -->|Push Action Trigger| GHA
+  GHA -->|Frontend Deploy| S3
+  GHA -->|Backend Deploy| EC2
+3. 아키텍처 의사결정
+1. CloudFront + S3 정적 배포 선택 이유
+React(Vite) 프론트엔드를 서버리스 정적으로 운영해 인프라 복잡도와 운영비를 낮추기
+위해 선택
+전 세계 엣지 캐시를 통해 초기 로딩 성능을 안정적으로 확보
+SPA 특성상 CloudFront에서 index.html 라우팅 보정(403/404 커스텀 응답)으로 딥
+링크/새로고침 이슈를 구조적으로 해결
+2. RDS 분리(운영 DB 외부화) 이유
+애플리케이션 서버(EC2)와 데이터 계층(DB)을 분리해 장애 영향 범위를 축소
+컨테이너/서버 재배포 시 데이터 영속성을 보장하고 운영 안정성을 높이기 위해 RDS로
+전환
+로컬 개발과 운영 환경을 동일 코드로 유지하면서, 접속 대상만 환경별로 분기 가능하도
+록 설계
+3. SG-to-SG 보안 정책(0.0.0.0/0 지양) 이유
+DB 포트(3306)를 인터넷에 개방하지 않고, EC2 보안그룹만 RDS에 접근하도록 제한
+최소 권한 원칙을 적용해 공격 표면을 줄이고, 내부 통신만 허용하는 구조로 보안 수준 강
+화
+포폴 정리
+3
+
+
+운영 중 보안 점검 시 “DB는 SG 간 허용만”이라는 명확한 기준을 유지 가능
+4. 설정 외부화(환경변수 기반) 이유
+DB_URL, DB_USERNAME, DB_PASSWORD, APP_CORS_ALLOWED_ORIGINS 등
+운영 설정을 코드에서 분리
+배포 환경 변경(로컬 MySQL → RDS, 도메인 변경) 시 재빌드 없이 런타임 설정만 교체
+가능
+환경 차이로 인한 배포 실패를 줄이고, 운영 변경 대응 속도를 높임
+5. 실시간 경로와 비동기 경로 분리
+실시간 API/WebSocket은 EC2(Spring) 유지
+집계성 작업은 Lambda + EventBridge로 분리
+지연 민감 기능은 안정성 우선, 배치는 탄력 실행으로 비용 최적화
+6. /api/admin/dashboard/stats 구조 전환
+요청 시 실시간 집계 → snapshot 우선 조회 구조로 변경
+snapshot 누락/지연 시 기존 실시간 계산 fallback 유지
+기능 연속성을 보장하면서 DB 읽기 부담 완화
+4. 보안 및 배포·운영 자동화
+1. 보안 원칙: S3 퍼블릭 차단 유지 + CloudFront OAC
+S3 버킷은 퍼블릭 액세스를 열지 않고, CloudFront OAC를 통해서만 객체 접근 허용
+정적 파일 직접 노출을 방지하고, CDN 경유 단일 진입점으로 접근 통제
+보안 설정과 성능(캐시)을 동시에 확보하는 배포 표준으로 운영
+2. 보안 원칙: RDS 접근 제어(SG 기반)
+RDS 인바운드는 3306을 EC2 보안그룹 소스로만 허용
+0.0.0.0/0 미사용 원칙을 적용해 외부 직접 접근을 차단
+네트워크 보안 정책을 코드/문서 체크리스트로 관리해 재배포 시에도 일관성 유지
+3. 운영 안정화: CloudFront 배포 상태/Invalidation 절차, CORS 체크리스트
+배포 후 Status = Deployed 확인, 캐시 반영 지연 시 Invalidation(/*) 수행 절차를 운
+영 표준화
+신규 도메인/배포 도메인 변경 시 백엔드 CORS 허용 목록 동시 반영
+SPA 운영 필수 항목(Default root object=index.html, 403/404 ->
+/index.html(200))을 체크리스트로 관리하여 재발 방지
+포폴 정리
+4
+
+
+4. IAM 권한 설계
+Lambda VPC 연결 시 실행 역할 권한 부족 이슈 확인
+AWSLambdaVPCAccessExecutionRole 반영으로 해결
+기능 권한 + 네트워크 권한을 함께 검토하는 절차 정립
+5. VPC/보안그룹 운영 절차
+Lambda를 RDS와 동일 VPC의 다중 AZ 서브넷에 연결
+Lambda SG -> RDS SG(3306)만 허용
+함수 배포 전 IAM/VPC/SG 점검 체크리스트화
+5. 트러블슈팅 사례
+5-1. 배포 이슈
+1. RDS 전환 + 환경변수 외부화
+문제: EC2 배포 후에도 애플리케이션이 localhost DB를 참조해 운영 DB 전환 실패
+원인: DB 접속 정보가 코드/설정에 고정되어 환경별 분리가 불가능
+조치: application.properties를 DB_URL, DB_USERNAME, DB_PASSWORD 기반
+으로 외부화하고 기본값은 로컬로 유지
+결과: 동일 아티팩트로 로컬/운영 배포 가능, RDS 전환 성공
+재발방지: 환경별 설정은 런타임 주입(12-factor) 원칙으로 표준화
+2. DS 보안그룹 SG-to-SG 설정 미흡
+문제: 백엔드에서 RDS 연결 타임아웃 발생
+원인: RDS 인바운드 규칙이 EC2 보안그룹을 소스로 허용하지 않음
+조치: RDS 보안그룹 3306 인바운드를 EC2 보안그룹(sg-...)으로 제한 허용
+결과: DB 연결 복구 및 외부 직접 접근 차단 유지
+재발방지: DB 네트워크 정책을 “SG-to-SG만 허용, 0.0.0.0/0 금지”로 운영 가이드화
+3. CloudFront + S3 SPA 라우팅 오류(403/404)
+a. 문제: 배포 후 딥링크/새로고침 시 403/404 발생
+b. 원인: React SPA 라우팅을 CDN/Origin에서 처리하지 못함
+c. 조치: CloudFront Default root object=index.html, 403/404 -> /index.html
+(200) 커스텀 에러 응답 적용
+d. 결과: 모든 클라이언트 라우트 정상 접근
+포폴 정리
+5
+
+
+e. 재발방지: SPA 배포 체크리스트에 라우팅/에러 매핑 항목 상시 포함
+4. Lambda VPC 연결 실패 (CreateNetworkInterface 권한 오류)
+문제: Lambda를 VPC에 연결해 RDS 접근을 구성하는 단계에서 저장 실패
+원인: Lambda 실행 역할에 ENI 생성 권한 부재 (ec2:CreateNetworkInterface)
+조치: 실행 역할에 AWSLambdaVPCAccessExecutionRole 정책 추가 후 재적용
+결과: Lambda의 VPC/서브넷/보안그룹 연결 정상화
+재발방지: VPC 연결 Lambda용 IAM 역할 템플릿 표준화
+5-2. 운영 이슈
+1. 대시보드 통계 API로 인한 DB 부하 증가
+문제: /api/admin/dashboard/stats 폴링으로 피크 시간 RDS 읽기 부하 상승
+원인: 요청 시점 실시간 집계 쿼리 반복 실행
+조치:
+Redis 캐시(dashboardStats, tableList, waitingList) + TTL 분리
+상태 변경 API에 @CacheEvict 적용
+Lambda + EventBridge 주기 집계 후 dashboard_stats_snapshot upsert
+API는 snapshot 우선 조회 + fallback(기존 실시간 계산) 구조로 전환
+결과: 응답 지연 감소, RDS 읽기 부하 완화, 장애 시 fallback으로 기능 연속성 확보
+재발방지: 조회 고빈도 API는 “사전 집계 + 캐시 + 무효화 규칙”을 기본 설계 원칙으로
+적용
+2. CloudFront 경유 API/WS 비정상 동작
+문제: 배포 후 API/WS 경로가 정적 동작과 섞여 응답/연결 이슈 발생
+원인: CloudFront Behavior 미분리(*에 동적 요청 포함)
+조치: 경로 기반 동작 분리
+정적: * (S3 + 캐시 최적화)
+API: /api/* (백엔드 오리진 + 캐시 비활성)
+WebSocket: /ws/* (백엔드 오리진 + 캐시 비활성)
+결과: 정적 캐시는 유지하면서 API/WS 안정성 확보
+재발방지: CDN 변경 시 “경로/오리진/캐시 정책” 점검 체크리스트 운영
+3. 외부 데이터 소스 장애로 기능 저하
+포폴 정리
+6
+
+
+문제: 로스터/경기 데이터 조회 실패 시 API 오류 전파
+원인: 외부 API/크롤링 의존도 높음
+조치: fallback 데이터/기본 응답 경로 도입, 부분 기능 강등
+결과: 외부 장애 시에도 핵심 예측 기능 유지
+재발방지: “핵심 기능 우선” 장애 격리 아키텍처 적용
+4. CloudFront 캐시로 인한 구버전 노출
+문제: S3에 신규 빌드 업로드 후에도 일부 사용자가 구버전 화면 확인
+원인: CloudFront 캐시 잔존으로 정적 자산 즉시 반영 실패
+조치: 배포 직후 invalidation(/*) 실행, 캐시 전략(HTML 짧게/해시 자산 길게) 분리
+결과: 배포 반영 시간 단축, 버전 불일치 이슈 감소
+재발방지: CI/CD에 캐시 무효화 단계와 캐시 정책 점검 자동화
+6. 비용 설계
+1. 프리 티어 제약 하 설계 원칙
+8GB 디스크 제약을 기준으로 단일 EC2 + Docker Compose 구조 유지
+운영용 의존성 분리로 이미지 경량화(requirements.prod.txt) 적용
+배포 안정성 확보를 위해 성능보다 “운영 가능 최소 구조” 우선
+2. 비용 상한/절감 전략
+배포 파이프라인에 container/image/volume prune 자동화해 디스크 포화 방지
+미사용 리소스 정리 체크리스트 운영(인스턴스/EBS 볼륨/Elastic IP)
+서비스 종료 시 stop이 아닌 terminate + 잔여 스토리지/EIP 동시 점검
+재배포 실패 원인(no space left on device)을 비용·운영 정책으로 환류하여 재발 방지
+3. 컴퓨팅 비용 최적화
+상시 처리(실시간)는 EC2 유지
+주기 처리(집계)는 Lambda 실행으로 전환
+“항상 켜둘 필요 없는 작업”을 서버리스로 분리
+4. 데이터/조회 비용 최적화
+CloudFront로 정적 리소스 캐시
+Redis로 dashboardStats, tableList, waitingList 캐시
+TTL 분리 + 상태 변경 시 Evict로 성능/일관성 균형 확보
+포폴 정리
+7
