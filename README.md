@@ -1,4 +1,4 @@
-﻿# Festival Flow 포트폴리오 정리
+﻿# Festival Flow
 
 ## 1. 프로젝트 개요
 
@@ -31,6 +31,8 @@ Festival Flow (축제 웨이팅·테이블 운영 지원 서비스)
 - 성능: CloudFront 정적 캐시 + Redis 캐시(TTL/Evict)로 응답속도 및 DB 부하 개선
 - 보안: RDS 인바운드 3306을 EC2/Lambda SG 소스로만 허용, CORS origin 명시 관리
 - 운영성: DB/Redis/CORS 설정 환경변수화, snapshot + fallback 구조로 기능 연속성 확보
+
+---
 
 ## 2. 아키텍처 설계
 ![Festival Flow 아키텍처 다이어그램](./img/festival%20diagram.png)
@@ -72,6 +74,8 @@ flowchart LR
   GHA -->|Backend Deploy| EC2
 ```
 
+---
+
 ## 3. 아키텍처 의사결정
 
 ### 1) CloudFront + S3 정적 배포 선택 이유
@@ -104,6 +108,8 @@ flowchart LR
 - snapshot 누락/지연 시 기존 실시간 계산 fallback 유지
 - 기능 연속성을 보장하며 DB 읽기 부하 완화
 
+---
+
 ## 4. 보안 및 배포·운영 자동화
 
 ### 1) 보안 조치: S3 퍼블릭 차단 + CloudFront OAC
@@ -129,6 +135,8 @@ flowchart LR
 - Lambda를 RDS와 동일 VPC의 다중 AZ 서브넷에 연결
 - Lambda SG -> RDS SG(3306)만 허용
 - 함수 배포 전 IAM/VPC/SG 체크리스트화
+
+---
 
 ## 5. 트러블슈팅 사례
 
@@ -175,6 +183,8 @@ flowchart LR
 - 문제: 배포 직후 일부 사용자에게 이전 화면 노출
 - 조치: invalidation 운영 절차 정립 + 캐시 정책 분리
 - 결과: 배포 반영 시간 단축, 버전 불일치 감소
+
+---
 
 ## 6. 비용 설계
 
