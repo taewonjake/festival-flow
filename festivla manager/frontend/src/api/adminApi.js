@@ -8,6 +8,9 @@ export const adminApi = {
 
   // 전체 웨이팅 목록 조회
   getAllWaitings: (status) => {
+    if (!status) {
+      return axiosInstance.get('/admin/waitings');
+    }
     return axiosInstance.get('/admin/waitings', { params: { status } });
   },
 

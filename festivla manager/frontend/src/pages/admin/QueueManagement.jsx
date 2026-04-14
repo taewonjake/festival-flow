@@ -14,7 +14,12 @@ const QueueManagement = () => {
   const queryClient = useQueryClient();
 
   // 웨이팅 목록 조회
-  const { data: waitingsData } = useQuery({
+  const {
+    data: waitingsData,
+    isLoading: waitingsLoading,
+    isError: waitingsError,
+    error: waitingsErrorDetail,
+  } = useQuery({
     queryKey: ['waitings', statusFilter],
     queryFn: () => adminApi.getAllWaitings(statusFilter),
     refetchInterval: 3000, // 3초마다 갱신
@@ -24,8 +29,8 @@ const QueueManagement = () => {
   const callMutation = useMutation({
     mutationFn: (waitingId) => adminApi.callWaiting(waitingId),
     onSuccess: () => {
-      queryClient.invalidateQueries(['waitings']);
-      queryClient.invalidateQueries(['dashboardStats']);
+      queryClient.invalidateQueries({ queryKey: ['waitings'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
     },
   });
 
@@ -33,8 +38,8 @@ const QueueManagement = () => {
   const confirmMutation = useMutation({
     mutationFn: (waitingId) => adminApi.confirmEntry(waitingId),
     onSuccess: () => {
-      queryClient.invalidateQueries(['waitings']);
-      queryClient.invalidateQueries(['dashboardStats']);
+      queryClient.invalidateQueries({ queryKey: ['waitings'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
     },
   });
 
@@ -42,8 +47,8 @@ const QueueManagement = () => {
   const cancelMutation = useMutation({
     mutationFn: (waitingId) => adminApi.cancelWaiting(waitingId),
     onSuccess: () => {
-      queryClient.invalidateQueries(['waitings']);
-      queryClient.invalidateQueries(['dashboardStats']);
+      queryClient.invalidateQueries({ queryKey: ['waitings'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
     },
   });
 
@@ -375,6 +380,21 @@ const QueueManagement = () => {
 
         {/* 대기열 리스트 (카드 형태) */}
         <div className="space-y-4">
+          {waitingsError && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              대기열 조회에 실패했습니다.
+              <span className="ml-1">
+                {waitingsErrorDetail?.response?.data?.message || waitingsErrorDetail?.message}
+              </span>
+            </div>
+          )}
+
+          {waitingsLoading && (
+            <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500">
+              대기열을 불러오는 중입니다...
+            </div>
+          )}
+
           {displayWaitings.length === 0 ? (
             <div className="text-center py-12 text-slate-400">
               <svg className="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
